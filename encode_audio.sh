@@ -109,12 +109,17 @@ process_files() {
 # Encoding function
 encode_audio() {
     local input_file="$1"
-    local output_file="${input_file%.*}.$(basename "$CODEC")"  # Fix output filename
+    # Determine the correct output file extension based on the codec
+    if [[ "$CODEC" == "libopus" ]]; then
+        local output_file="${input_file%.*}_Encoded.opus"
+    else
+        local output_file="${input_file%.*}_Encoded.eac3"
+    fi
 
     echo -e "\nEncoding $input_file to $output_file..."
 
-    # Encode the file to EAC3 or Opus, hiding ffmpeg output
-    ffmpeg -i "$input_file" -c:a $CODEC -b:a $BITRATE -ac $CHANNELS -y "$output_file" &> /dev/null
+    # Encode the file to EAC3 or Opus, hiding ffmpeg output and capturing errors
+    ffmpeg -i "$input_file" -c:a "$CODEC" -b:a "$BITRATE" -ac "$CHANNELS" -y "$output_file" 2> /tmp/ffmpeg_error.log
 
     # Check if encoding was successful
     if [[ $? -eq 0 ]]; then
@@ -122,7 +127,8 @@ encode_audio() {
         rm "$input_file"  # Delete original file
         echo "Deleted original file: $input_file"
     else
-        echo "Encoding failed for $input_file"
+        echo "Encoding failed for $input_file. See error log for details:"
+        cat /tmp/ffmpeg_error.log  # Display the ffmpeg error output
     fi
 }
 
